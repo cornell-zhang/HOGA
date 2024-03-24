@@ -7,7 +7,7 @@ HOGA is an attention model for scalable and generalizable learning on circuits. 
 
 | ![HOGA.png](/figures/HOGA.png) | 
 |:--:| 
-| Figure1: An overview of HOGA. |
+| Figure1: An overview of HOGA and gated attention module. |
 
 Requirements
 ------------
