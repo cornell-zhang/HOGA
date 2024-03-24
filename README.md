@@ -22,4 +22,4 @@ Check at Huggingface: https://huggingface.co/datasets/yucx0626/Gamora-CSA-Multip
 
 Note
 ------------
-Still tuned for more experiments and details
+More experiments and details will be provided soon.
