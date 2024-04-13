@@ -18,7 +18,9 @@ Requirements
 Datasets
 ------------
 ### Pre-processed CSA and Booth Multipliers (for Gamora experiments)
-Check at Huggingface: https://huggingface.co/datasets/yucx0626/Gamora-CSA-Multiplier/tree/main
+Check at: https://huggingface.co/datasets/yucx0626/Gamora-CSA-Multiplier/tree/main
+### Pre-processed OpenABC-D benchmark (for OpenABC-D experiments)
+Check at: https://zenodo.org/records/6399454#.YkTglzwpA5k
 
 Note
 ------------
