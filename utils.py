@@ -23,7 +23,7 @@ def graph2adj(adj):
 def preprocess(data, args):
     print("Preprocessing node features!!!!!!")
     nnodes = data.x.shape[0]
-    if args.undirected:
+    if not args.directed:
         data.edge_index = to_undirected(data.edge_index, nnodes)
         row, col = data.edge_index
         adj = SparseTensor(row=row, col=col, sparse_sizes=(nnodes, nnodes))
