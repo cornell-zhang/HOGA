@@ -98,7 +98,7 @@ def main():
     test_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, shuffle=False, num_workers=10)
 
     model = HOGA(data.num_features, args.hidden_channels, 3, args.num_layers,
-            args.dropout, num_hops=args.num_hops+1, heads=args.heads).to(device)
+            args.dropout, num_hops=args.num_hops+1, heads=args.heads, attn_type="mix").to(device)
 
     logger_r = Logger(args.runs, args)
     logger = Logger(args.runs, args)

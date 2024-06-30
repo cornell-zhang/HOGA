@@ -24,4 +24,19 @@ Check at: https://zenodo.org/records/6399454#.YkTglzwpA5k
 
 Note
 ------------
-More experiments and details will be provided soon.
+The implementation of hop-wise feature generation is available [here](https://github.com/cornell-zhang/HOGA/blob/b9dc53bc5df60369a34a8c79ca6015b10946e5f3/utils.py#L23). The model (i.e., hop-wise gated attention) implementation is available [here](https://github.com/cornell-zhang/HOGA/blob/b9dc53bc5df60369a34a8c79ca6015b10946e5f3/model.py#L60). You can adjust them for your own tasks. 
+
+Citation
+------------
+If you use HOGA in your research, please cite our work
+published in DAC'24.
+
+```
+@inproceedings{deng2024hoga,
+  title={Less is More: Hop-Wise Graph Attention for Scalable and Generalizable Learning on Circuits},
+  author={Chenhui Deng and Zichao Yue and Cunxi Yu and Gokce Sarar and Ryan Carey and Rajeev Jain and Zhiru Zhang},
+  booktitle={DAC},
+  year={2024},
+}
+```
+

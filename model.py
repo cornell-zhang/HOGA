@@ -3,9 +3,12 @@ import torch.nn.functional as F
 from torch.nn import Linear, BatchNorm1d, LayerNorm, Dropout, Softmax
 
 
-class MultiheadAttention(torch.nn.Module):
+'''
+Slightly modified multihead attention for Gamora
+'''
+class MultiheadAttentionMix(torch.nn.Module):
     def __init__(self, input_dim, num_heads, dropout=0.0):
-        super(MultiheadAttention, self).__init__()
+        super(MultiheadAttentionMix, self).__init__()
 
         self.input_dim = input_dim
         self.num_heads = num_heads
@@ -56,14 +59,63 @@ class MultiheadAttention(torch.nn.Module):
 
         return attention_output, attention_probs
 
+'''
+Vanilla multihead attention (recommended for general use cases)
+'''
+class MultiheadAttention(torch.nn.Module):
+    def __init__(self, input_dim, num_heads, dropout=0.0):
+        super(MultiheadAttention, self).__init__()
+
+        self.input_dim = input_dim
+        self.num_heads = num_heads
+        self.head_dim = input_dim // num_heads
+
+        # Linear projections for queries, keys, and values
+        self.query_projection = Linear(input_dim, input_dim)
+        self.key_projection = Linear(input_dim, input_dim)
+        self.value_projection = Linear(input_dim, input_dim)
+
+        # Linear projection for the output of the attention heads
+        self.output_projection = Linear(input_dim, input_dim)
+
+        self.dropout = Dropout(dropout)
+        self.softmax = Softmax(dim=-1)
+
+    def forward(self, query, key, value, mask=None):
+        batch_size, seq_len, _ = query.size()
+
+        # Linear projections for queries, keys, and values
+        query = self.query_projection(query)
+        key = self.key_projection(key)
+        value = self.value_projection(value)
+
+        # Reshape the projected queries, keys, and values
+        query = query.view(batch_size, seq_len, self.head_dim, -1)
+        key = key.view(batch_size, seq_len, self.head_dim, -1)
+        value = value.view(batch_size, seq_len, self.head_dim, -1)
+
+        # Compute the scaled dot-product attention
+        attention_scores = torch.einsum('bldh, bndh -> blnh', query, key)
+        attention_scores = attention_scores / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))
+
+        attention_probs = self.softmax(attention_scores)
+        attention_probs = self.dropout(attention_probs)
+
+        # Compute the output of the attention heads
+        attention_output = torch.einsum('blnh, bndh -> bldh', attention_probs, value)
+
+        # Reshape and project the output of the attention heads
+        attention_output = attention_output.reshape(batch_size, seq_len, self.input_dim)
+        attention_output = self.output_projection(attention_output)
+
+        return attention_output, attention_probs
 
 class HOGA(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers,
-                 dropout, num_hops, heads, attn_dropout=0.0):
+                 dropout, num_hops, heads, attn_dropout=0.0, attn_type="vanilla", use_bias=False):
         super(HOGA, self).__init__()
         self.num_layers = num_layers
         self.num_hops = num_hops
-        use_bias = False
 
         self.lins = torch.nn.ModuleList()
         self.gates = torch.nn.ModuleList()
@@ -73,22 +125,28 @@ class HOGA(torch.nn.Module):
         self.lins.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
         self.lins.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
         self.gates.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
-        self.trans.append(MultiheadAttention(hidden_channels, heads, dropout=attn_dropout))
+        if attn_type == "vanilla":
+            self.trans.append(MultiheadAttention(hidden_channels, heads, dropout=attn_dropout))
+        else:
+            self.trans.append(MultiheadAttentionMix(hidden_channels, heads, dropout=attn_dropout))
         self.lns.append(LayerNorm(hidden_channels))
         for _ in range(num_layers - 1):
             self.lins.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
             self.gates.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
-            self.trans.append(MultiheadAttention(hidden_channels, heads, dropout=attn_dropout))
+            if attn_type == "vanilla":
+                self.trans.append(MultiheadAttention(hidden_channels, heads, dropout=attn_dropout))
+            else:
+                self.trans.append(MultiheadAttentionMix(hidden_channels, heads, dropout=attn_dropout))
             self.lns.append(LayerNorm(hidden_channels))
 
-        # two linear layer for predictions
+        # Linear layers for predictions
         self.linear = torch.nn.ModuleList()
-        self.linear.append(Linear(hidden_channels, hidden_channels, bias=False))
-        self.linear.append(Linear(hidden_channels, out_channels, bias=False))
-        self.linear.append(Linear(hidden_channels, out_channels, bias=False))
-        self.linear.append(Linear(hidden_channels, out_channels, bias=False))
+        self.linear.append(Linear(hidden_channels, hidden_channels, bias=use_bias))
+        self.linear.append(Linear(hidden_channels, out_channels, bias=use_bias))
+        self.linear.append(Linear(hidden_channels, out_channels, bias=use_bias))
+        self.linear.append(Linear(hidden_channels, out_channels, bias=use_bias))
 
-        self.bn0 = BatchNorm1d(hidden_channels)
+        self.bn = BatchNorm1d(hidden_channels)
         self.attn_layer = Linear(2 * hidden_channels, 1)
 
         self.dropout = dropout
@@ -100,9 +158,11 @@ class HOGA(torch.nn.Module):
             gate.reset_parameters()
         for li in self.linear:
             li.reset_parameters()
-        self.bn0.reset_parameters()
+        self.bn.reset_parameters()
 
     def forward(self, x):
+        # Current implementation: use a shared linear layer for all hop-wise features
+        # Note: apply separate layers for different hop-wise features may further improve accuracy
         x = self.lins[0](x)
 
         for i, tran in enumerate(self.trans):
@@ -120,7 +180,7 @@ class HOGA(torch.nn.Module):
         neighbor_tensor = torch.sum(neighbor_tensor, dim=1, keepdim=True)
         x = (node_tensor + neighbor_tensor).squeeze()
         x = self.linear[0](x)
-        x = self.bn0(F.relu(x))
+        x = self.bn(F.relu(x))
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         x1 = self.linear[1](x) # for xor
