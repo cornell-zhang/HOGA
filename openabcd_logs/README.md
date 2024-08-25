@@ -9,7 +9,9 @@ include the scaling factor of 100, which we initially expected. As a result, our
 
 Reproducibility
 ------------
-For simplicity, we only provide HOGA predictions on the test set, from which you can easily calculate the MAPE for each test design, as well as generate the plots in Figure 4 of our paper, using the following command:
+For simplicity, we only provide HOGA predictions on the test set, from which you can easily calculate the MAPE for each test design, as well as generate the plots of HOGA prediction vs. ground truth, using the following command:
 ```
 python analyze.py
 ```
+
+Note that we have fixed a minor issue and the latest HOGA results of MAPE are better than those reported in our paper (5.0 -> 2.9).
